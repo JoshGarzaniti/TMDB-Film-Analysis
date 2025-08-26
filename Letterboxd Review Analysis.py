@@ -40,26 +40,29 @@ Horror_End_Year = 2025
 
 save_path = r"G:\My Drive\Personal Projects\horror_movies.csv"
 
-# Load existing progress
+#Pull from original source file in my drive (you can change this to your wd)
 if os.path.exists(save_path):
     horror_movies_df = pd.read_csv(save_path)
     print(f"Loaded existing dataset with {horror_movies_df.shape[0]} movies")
 else:
     horror_movies_df = pd.DataFrame()
-
+#First for loop: for each year in the start date to end date range, if that movie has a 
+#year column start a count of how many movies there are for that year.
 for year in range(Horror_Start_Year, Horror_End_Year + 1):
     if "release_date" in horror_movies_df.columns:
         existing_count = horror_movies_df[
             pd.to_datetime(horror_movies_df['release_date'], errors="coerce").dt.year == year
         ].shape[0]
     else:
-        existing_count = 0  # nothing has been saved yet
+        existing_count = 0  #That year hasn't been scraped yet
     
     print(f"Starting year {year} (already have {existing_count} movies)")
     
     print(f"Starting year {year} (already have {existing_count} movies)")
     
     page = 1
+#While loop: while the range arguement is still true, sent a request to the api to pull
+#every movie that fits our specified type (horror), and start ordering them by date.
     while True:
         print(f"Fetching page {page} for {year}")
         horror_discover = tmdb.Discover()
@@ -69,11 +72,15 @@ for year in range(Horror_Start_Year, Horror_End_Year + 1):
             primary_release_date_lte=f"{year}-12-31",
             sort_by="release_date.asc",
             page=page)
-
+#create a sleep delay in between each page pull so that we don't get flagged
         time.sleep(0.5)
 
-        # If we already scraped this page (based on count), skip
-        if existing_count >= (page * 20):  # ~20 movies per page
+        #There's only 20 movies on each page so if the existing count of a year's
+        #specific page is greater or equal to 20 we've already pulled the data, if not...
+        #meaning if we haven't either started or finished scraping that page, for each 
+        #movie in the page, pull the variables below and add them to the blank dataframe.
+        
+        if existing_count >= (page * 20): 
             print(f"Skipping page {page}, already scraped")
         else:
             year_movies = []
@@ -95,11 +102,12 @@ for year in range(Horror_Start_Year, Horror_End_Year + 1):
                     "language": details.get("original_language"),
                 })
             
-            # Append & save after each page
+            
             horror_movies_df = pd.concat([horror_movies_df, pd.DataFrame(year_movies)], ignore_index=True)
             horror_movies_df.to_csv(save_path, index=False)
             print(f"Saved page {page} for {year} (total {horror_movies_df.shape[0]} movies)")
-
+#Once we finish a page's worth of movies (20), break the loop, add 1 to the page counter
+#for the year and then start pulling th enext page.
         if page >= response["total_pages"]:
             print(f"Finished year {year}")
             break
