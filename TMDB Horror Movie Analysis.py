@@ -80,6 +80,44 @@ plt.xlabel('Year')
 plt.ylabel('Average Production Budget')
 plt.show()
 
+##Graphing out Horror Revenues by Year
 
+horror_revenues_by_year = horror_movies.groupby('year')['revenue'].mean()
 
+plt.figure(figsize=(12,6))
+plt.plot(horror_revenues_by_year.index, horror_revenues_by_year.values)
+plt.title('Average Horror Revenue over Time')
+plt.xlabel('Year')
+plt.ylabel('Average Revenue')
+plt.show()
 
+##Graphing out Horror Profits by Year
+
+horror_movies['profit'] = horror_movies['revenue'] - horror_movies['budget']
+
+horror_profits_by_year = horror_movies.groupby('year')['profit'].mean()
+
+plt.figure(figsize=(12,6))
+plt.plot(horror_profits_by_year.index, horror_profits_by_year.values)
+plt.title('Average Horror Profit over Time')
+plt.xlabel('Year')
+plt.ylabel('Average Profit')
+plt.show()
+
+##Number of horror movies released each year
+
+horror_movies['release_date'].dt.year.value_counts().sort_index().plot(kind='bar', figsize=(12,6))
+plt.title('Number of Horror Movies Released Each Year')
+plt.xlabel('Year')
+plt.ylabel('Number of Movies')
+plt.show()
+
+##Number of profitable horror movies released each year
+
+profitable_horror_movies = horror_movies[horror_movies['profit'] > 0]
+
+profitable_horror_movies['release_date'].dt.year.value_counts().sort_index().plot(kind='bar', figsize=(12,6))
+plt.title('Number of Profitable Horror Movies Released Each Year')
+plt.xlabel('Year')
+plt.ylabel('Number of Movies')
+plt.show()
