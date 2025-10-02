@@ -45,6 +45,15 @@ horror_movies['production_companies'] = (
 
 horror_movies.head()
 
+##Remove duplicates from original data
+#horror_movies = (
+#   horror_movies
+#  .drop_duplicates(subset=['title', 'release_year'], keep='first')
+#
+#    .reset_index(drop=True))
+#
+#horror_movies
+
 
 horror_movies['release_date'] = pd.to_datetime(horror_movies['release_date'], errors='coerce')
 
@@ -181,7 +190,13 @@ horror_movies_cleaned_votes = horror_movies.dropna(subset=['vote_count'])
 
 horror_movies_cleaned_budget = horror_movies.dropna(subset=['budget'])
 
+horror_movies_cleaned_revenue = horror_movies.dropna(subset=['revenue'])
+
 horror_movies_cleaned_runtime = horror_movies.dropna(subset=['runtime'])
+
+horror_movies_cleaned_ratings = horror_movies.dropna(subset=['vote_average'])
+
+horror_movies_cleaned_profit = horror_movies.dropna(subset=['profit'])
 
 # %%
 #Correlation analysis cleaned runtime
@@ -196,4 +211,293 @@ horror_cleaned_runtime_correlation_matrix.style.background_gradient(cmap='coolwa
 #budget also has a moderate positive correlation with vote count and revenue.
 #It looks like there's a negative correlation between runtime and
 #vote average (but it's weak)
+# %%
+
+#How do Classic Horror Movie Compare to the Field?
+
+# Extract release year
+horror_movies['release_year'] = horror_movies['release_date'].dt.year
+
+# Dictionary of originals (title -> release year)
+classic_horror_originals = {
+    "The Exorcist": 1973,
+    "Halloween": 1978,
+    "A Nightmare on Elm Street": 1984,
+    "Friday the 13th": 1980,
+    "The Texas Chain Saw Massacre": 1974,
+    "The Shining": 1980,
+    "Alien": 1979,
+    "Jaws": 1975,
+    "The Thing": 1982,
+    "Carrie": 1976,
+    "Evil Dead": 1981,
+    "Child's Play": 1988,
+    "Scream": 1996,
+    "Candyman": 1992,
+    "Poltergeist": 1982,
+    "The Silence of the Lambs": 1991,
+    "The Conjuring": 2013,
+    "It": 2017,      # newer film
+    "Hereditary": 2018,
+    "Get Out": 2017,
+    "The Ring": 2002,
+    "Saw": 2004
+    }
+
+# Filter by exact (title, year) combo
+classic_horror_df = (
+    horror_movies[
+        horror_movies.apply(
+            lambda row: classic_horror_originals.get(row['title']) == row['release_year'],
+            axis=1
+            )
+    ][['title', 'release_date', 'release_year',
+       'vote_average', 'vote_count', 'budget', 'revenue', 'profit', 'runtime']]
+    .sort_values(by='release_date')
+    .reset_index(drop=True))
+
+classic_horror_df = (
+    classic_horror_df
+    .drop_duplicates(subset=['title', 'release_year'], keep='first')
+    .reset_index(drop=True))
+
+classic_horror_df
+
+# %%
+# Now that we have the classic horror movies, let's compare their average metrics
+# to the overall averages for horror movies
+
+overall_average_df = pd.DataFrame({
+    'Metric': ['vote_average', 
+               'vote_count', 
+               'budget', 
+               'revenue',
+               'profit',
+               'profit pct of budget',],
+    'Overall Average': [
+        horror_movies['vote_average'].mean(),
+        horror_movies['vote_count'].mean(),
+        horror_movies['budget'].mean(),
+        horror_movies['revenue'].mean(),
+        (horror_movies['revenue'] - horror_movies['budget']).mean(),
+        (horror_movies['profit'] / horror_movies['budget']).mean()
+    ]   
+})
+classic_horror_averages = {
+    'Metric': ['vote_average', 
+               'vote_count', 
+               'budget', 
+               'revenue',
+               'profit',
+               'profit pct of budget',],
+    'Classic Horror Average': [
+        classic_horror_df['vote_average'].mean(),
+        classic_horror_df['vote_count'].mean(),
+        classic_horror_df['budget'].mean(),
+        classic_horror_df['revenue'].mean(),
+        classic_horror_df['profit'].mean(),
+        (classic_horror_df['profit'] / classic_horror_df['budget']).mean()
+    ]
+}
+classic_horror_average_df = pd.DataFrame(classic_horror_averages)
+
+comparison_df = pd.merge(overall_average_df, classic_horror_average_df, on='Metric')
+
+comparison_df['Difference'] = comparison_df['Classic Horror Average'] - comparison_df['Overall Average']
+
+comparison_df['Percent Difference'] = (comparison_df['Difference'] / comparison_df['Overall Average']) * 100
+
+
+comparison_df.style.format({
+    'Overall Average': '{:,.2f}',
+    'Classic Horror Average': '{:,.2f}',
+    'Difference': '{:,.2f}',
+    'Percent Difference': '{:,.2f}%',
+})
+
+# %%
+#Graphing average votes between overall horror movies and classics
+vote_labels = ['All Horror Movies', 'Cult Classic Horror Movies']
+
+vote_averages = [
+    comparison_df.loc[comparison_df['Metric'] == 'vote_average', 'Overall Average'].values[0],
+    comparison_df.loc[comparison_df['Metric'] == 'vote_average', 'Classic Horror Average'].values[0]
+]
+
+x = np.arange(len(vote_labels))
+plt.figure(figsize=(8,6))
+bars = plt.bar(x, vote_averages, color=['blue', 'orange'])
+
+
+for bar in bars:
+    height = bar.get_height()
+    plt.text(
+        bar.get_x() + bar.get_width()/2., 
+        height,
+        f'{height:.2f}',
+        ha='center', va='bottom'
+    )
+
+plt.xticks(x, vote_labels)
+plt.ylabel('Average TMDB Rating (0-10 scale)')
+plt.title('Average review rating for Horror Movies\ncompared to Cult Classics',
+          fontsize=14, weight='bold')
+plt.show()
+
+
+# %%
+#Graphing average vote counts between overall horror movies and classics
+
+vote_count_labels = ['All Horror Movies', 'Cult Classic Horror Movies']
+
+vote_count_averages = [
+    comparison_df.loc[comparison_df['Metric'] == 'vote_count', 'Overall Average'].values[0],
+    comparison_df.loc[comparison_df['Metric'] == 'vote_count', 'Classic Horror Average'].values[0]
+]
+
+x = np.arange(len(vote_count_labels))
+plt.figure(figsize=(8,6))
+bars = plt.bar(x, vote_count_averages, color=['blue', 'orange'])
+
+
+for bar in bars:
+    height = bar.get_height()
+    plt.text(
+        bar.get_x() + bar.get_width()/2., 
+        height,
+        f'{height:.2f}',
+        ha='center', va='bottom'
+    )
+
+plt.xticks(x, vote_labels)
+plt.ylabel('Average Votes on TMDB')
+plt.title('Average number of reviews of Horror Movies\ncompared to Cult Classics',
+          fontsize=14, weight='bold')
+plt.show()
+
+# %%
+#Graphing comparison between classic and overall budgets
+
+budget_labels = ['All Horror Movies', 'Cult Classic Horror Movies']
+
+budget_averages = [
+    comparison_df.loc[comparison_df['Metric'] == 'budget', 'Overall Average'].values[0],
+    comparison_df.loc[comparison_df['Metric'] == 'budget', 'Classic Horror Average'].values[0]
+]
+
+x = np.arange(len(budget_labels))
+plt.figure(figsize=(8,6))
+bars = plt.bar(x, budget_averages, color=['blue', 'orange'])
+
+
+for bar in bars:
+    height = bar.get_height()
+    plt.text(
+        bar.get_x() + bar.get_width()/2.,
+        height,
+        f'{height/1e6:.2f}M',
+        ha='center', va='bottom'
+    )
+
+plt.xticks(x, budget_labels)
+plt.ylabel('Production Budget (USD)')
+
+# Format y-axis ticks in millions
+plt.gca().yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f'{x*1e-6:.1f}M'))
+
+plt.title('Average Production Budget of Horror Movies\ncompared to Cult Classics',
+          fontsize=14, weight='bold')
+plt.show()
+
+
+# %%
+
+revenue_labels = ['All Horror Movies', 'Cult Classic Horror Movies']
+
+revenue_averages = [
+    comparison_df.loc[comparison_df['Metric'] == 'revenue', 'Overall Average'].values[0],
+    comparison_df.loc[comparison_df['Metric'] == 'revenue', 'Classic Horror Average'].values[0]
+]
+
+x = np.arange(len(revenue_labels))
+plt.figure(figsize=(8,6))
+bars = plt.bar(x, revenue_averages, color=['blue', 'orange'])
+
+
+for bar in bars:
+    height = bar.get_height()
+    plt.text(
+        bar.get_x() + bar.get_width()/2.,
+        height,
+        f'{height/1e6:.2f}M',
+        ha='center', va='bottom'
+    )
+
+plt.xticks(x, revenue_labels)
+plt.ylabel('Box Office Grossings (USD)')
+
+# Format y-axis ticks in millions
+plt.gca().yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f'{x*1e-6:.1f}M'))
+
+plt.title('Average Box Office Grossings of Horror Movies\ncompared to Cult Classics',
+          fontsize=14, weight='bold')
+plt.show()
+
+# %%
+
+#Graphing comparison between classic and overall profits
+
+profit_labels = ['All Horror Movies', 'Cult Classic Horror Movies']
+
+profit_averages = [
+    comparison_df.loc[comparison_df['Metric'] == 'profit', 'Overall Average'].values[0],
+    comparison_df.loc[comparison_df['Metric'] == 'profit', 'Classic Horror Average'].values[0]
+]
+
+x = np.arange(len(profit_labels))
+plt.figure(figsize=(8,6))   
+bars = plt.bar(x, profit_averages, color=['blue', 'orange'])
+
+
+for bar in bars:
+    height = bar.get_height()
+    plt.text(
+        bar.get_x() + bar.get_width()/2.,
+        height,
+        f'{height/1e6:.2f}M',
+        ha='center', va='bottom'
+    )
+
+plt.xticks(x, profit_labels)
+plt.ylabel('Profit (USD)')
+
+# Format y-axis ticks in millions
+plt.gca().yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f'{x*1e-6:.1f}M'))
+
+plt.title('Average Profit of Horror Movies\ncompared to Cult Classics',
+          fontsize=14, weight='bold')
+plt.show()
+
+# %%
+
+overall_row = pd.DataFrame([{
+    'title': 'Overall Horror Average',
+    'release_date': pd.NaT,
+    'release_year': None,
+    'vote_average': horror_movies_cleaned_ratings['vote_average'].mean(),
+    'vote_count': horror_movies_cleaned_votes['vote_count'].mean(),
+    'budget': horror_movies_cleaned_budget['budget'].mean(),
+    'revenue': horror_movies_cleaned_revenue['revenue'].mean(),
+    'profit': horror_movies_cleaned_profit['profit'].mean(),
+    'runtime': horror_movies_cleaned_runtime['runtime'].mean()
+}])
+
+classics_vs_overall = pd.concat([classic_horror_df, overall_row], ignore_index=True)
+
+classics_vs_overall['profit_pct_of_budget'] = classics_vs_overall['profit'] / classics_vs_overall['budget'] * 100
+
+classics_vs_overall = classics_vs_overall.round(1)
+
+classics_vs_overall
+
 # %%
