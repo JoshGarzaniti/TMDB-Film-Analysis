@@ -501,3 +501,33 @@ classics_vs_overall = classics_vs_overall.round(1)
 classics_vs_overall
 
 # %%
+
+# Now I want to plot out all of these metrics for each of the
+# classic movies as well as the overall average
+
+plt.figure(figsize=(12,6))
+
+scatter = plt.scatter(
+    classics_vs_overall['title'], 
+    classics_vs_overall['vote_average'],
+    c=classics_vs_overall['vote_average'],
+    cmap='coolwarm',    
+    s=100,       
+    edgecolor='black')
+
+cbar = plt.colorbar(scatter)
+cbar.set_label('Vote Average', rotation=270, labelpad=15)
+
+plt.axhline(
+    y=overall_row['vote_average'].values[0], 
+    color='blue', linestyle='--', label='Overall Average')
+
+plt.legend()
+plt.xticks(rotation=45, ha='right')
+plt.ylabel('Average Rating (0–10 scale)')
+plt.title('Average Ratings of Classic Horror Movies vs Overall Average', fontsize=14, weight='bold')
+plt.tight_layout()
+plt.show()
+
+
+# %%
